@@ -1,7 +1,7 @@
 ﻿;{ ===========================================================================================================[Header ]
 ;: 
 ;: Name ......... : MastoToot
-;: Version ...... : 1.1.0
+;: Version ...... : 1.2.0
 ;: Type ......... : Module
 ;: Author ....... : jamirokwai
 ;: Compiler ..... : PureBasic V6.01
@@ -11,6 +11,7 @@
 ;: License ...... : MIT License 
 ;: 
 ;: Thanks to: https://chrisjones.io/articles/using-php-And-curl-To-post-media-To-the-mastodon-api/
+;: Github: https://github.com/foodsnacker/pb-toot
 ;:
 ;: Permission is hereby granted, free of charge, to any person obtaining a copy
 ;: of this software and associated documentation files (the "Software"), to deal
@@ -34,16 +35,13 @@
 
 DeclareModule MastoToot
   
-  Global masto_appname.s   ; the name of your app, e.g. "PureBasic"
-  Global masto_appweb.s    ; the URL of your app, e.g. "https://www.purebasic.com"
-  Global masto_server.s    ; the URL of the server, e.g. "https://mastodon.gamedev.place"
-  Global masto_reply.s     ; will be the return value
-  Global access_token.s    ; your access token. You should let your users generate it and place it in the app!
+  Global masto_reply.s     ; will be the return value, a JSON
+  Global masto_status.s    ; status of last operation, see documentation, e.g. "200"
   
   Declare   InitMasto(appserver.s, appname.s, appweb.s)
   Declare   SetAccessToken(token.s)
   Declare   VerifyAccessToken()
-  Declare.s AddMedia(filename.s, *source, buffersize, imagetype.s, description.s = "") ; with filetype = "png" or "jpeg"
+  Declare.s AddMedia(filename.s, *source, buffersize, imagetype.s, description.s = "")
   Declare.s Toot(message.s, imageid.s = "")
   
 EndDeclareModule
@@ -51,6 +49,11 @@ EndDeclareModule
 Module MastoToot
   EnableExplicit
   
+  Global masto_appname.s   ; the name of your app, e.g. "PureBasic"
+  Global masto_appweb.s    ; the URL of your app, e.g. "https://www.purebasic.com"
+  Global masto_server.s    ; the URL of the server, e.g. "https://mastodon.gamedev.place"
+  Global access_token.s    ; your access token. You should let your users generate it and place it in the app!
+
   Define masto_request_create_application.s
   Define masto_request_create_authenticate.s
   Define masto_verify_credentials.s
@@ -170,23 +173,22 @@ Module MastoToot
     
     Global HttpRequest = HTTPRequestMemory(#PB_HTTP_Post, masto_media_api, *Buffer, MemorySize(*Buffer), 0, Header())
     If HttpRequest
-      masto_reply = HTTPInfo(HTTPRequest, #PB_HTTP_StatusCode)
+      masto_status = HTTPInfo(HTTPRequest, #PB_HTTP_StatusCode)
       
-      If masto_reply <> "200"
+      If masto_status <> "200"
         FinishHTTP(HTTPRequest)
-        ProcedureReturn "0"
+        ProcedureReturn ""
       EndIf
       
-      Define response.s = HTTPInfo(HTTPRequest, #PB_HTTP_Response)
-      Debug response
-      
-      mediaid = GetPartFromString(response, "id")
+      masto_reply            = HTTPInfo(HTTPRequest, #PB_HTTP_Response)
+      Define masto_mediaid.s = GetPartFromString(masto_reply, "id")
       
       FinishHTTP(HttpRequest)
     EndIf
     
     FreeMemory(*Buffer)
-    ProcedureReturn mediaid
+    
+    ProcedureReturn masto_mediaid
   EndProcedure
   
   Procedure.s Toot(message.s, imageid.s = "")
@@ -203,16 +205,19 @@ Module MastoToot
     HttpRequest = HTTPRequest(#PB_HTTP_Post, masto_toot_api, message, 0, Header())
     
     If HttpRequest
-      masto_reply = HTTPInfo(HTTPRequest, #PB_HTTP_Response)
-      If masto_reply <> "200"
+      masto_status = HTTPInfo(HTTPRequest, #PB_HTTP_StatusCode)
+      If masto_status <> "200"
         FinishHTTP(HTTPRequest)
         ProcedureReturn "0"
       EndIf
-      result      = HTTPInfo(HTTPRequest, #PB_HTTP_StatusCode)
+      
+      masto_reply        = HTTPInfo(HTTPRequest, #PB_HTTP_Response)
+      Define masto_url.s = GetPartFromString(masto_reply, "url")
+      
       FinishHTTP(HTTPRequest)
     EndIf
     
-    ProcedureReturn result
+    ProcedureReturn masto_url
   EndProcedure
   
   ; you won't need these procedures, but if you like to create an application on your server,
@@ -257,19 +262,24 @@ CompilerIf #PB_Compiler_IsMainFile
   #masto_server      = "my-mastodon-server"
   #masto_appname     = "my-app"
   #masto_app_url     = "page-of-my-app"
-  #masto_acces_token = "my-token" ; from my/server/settings/applications
+  #masto_acces_token = "my-token" ; from my-server/settings/applications
   MastoToot::InitMasto(#masto_server, #masto_appname, #masto_app_url)
   MastoToot::SetAccessToken(#masto_acces_token)
   If MastoToot::VerifyAccessToken() = #True
     
-    ; creates a black image
+;     creates a black image
     CreateImage(0,400,400,32,0)
     Define *buff = EncodeImage(0, #PB_ImagePlugin_PNG)
     
-    ; add media to your mastodon account
+;     add media To your mastodon account
     Define media_id.s = MastoToot::AddMedia("filename.png", *buff, MemorySize(*buff), "png", "Black image.")
     
-    ; toot it with one image
-    MastoToot::Toot("Tooting from PureBasic!", media_id)
+;     toot it With one image
+    Define tooturl.s = MastoToot::Toot("Tooting from PureBasic!", media_id)
   EndIf
 CompilerEndIf
+; IDE Options = PureBasic 6.01 LTS - C Backend (MacOS X - arm64)
+; CursorPosition = 264
+; Folding = ---
+; EnableXP
+; DPIAware
