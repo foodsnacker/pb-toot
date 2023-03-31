@@ -35,8 +35,8 @@
 
 DeclareModule MastoToot
   
-  Global masto_reply.s     ; will be the return value, a JSON
-  Global masto_status.s    ; status of last operation, see documentation, e.g. "200"
+  Global reply.s     ; will be the return value, a JSON
+  Global status.s    ; status of last operation, see documentation, e.g. "200"
   
   Declare   InitMasto(appserver.s, appname.s, appweb.s)
   Declare   SetAccessToken(token.s)
@@ -110,7 +110,7 @@ Module MastoToot
     Define HttpRequest = HTTPRequestMemory(#PB_HTTP_Post, serverurl, *Buffer, MemorySize(*Buffer))
     
     If HttpRequest
-      masto_reply = HTTPInfo(HTTPRequest, #PB_HTTP_Response)
+      reply = HTTPInfo(HTTPRequest, #PB_HTTP_Response)
       result      = HTTPInfo(HTTPRequest, #PB_HTTP_StatusCode)
       FinishHTTP(HTTPRequest)
     EndIf
@@ -131,7 +131,7 @@ Module MastoToot
     Define HttpRequest = HTTPRequestMemory(#PB_HTTP_Get, serverurl, *Buffer, MemorySize(*Buffer), 0, Header())
     
     If HttpRequest
-      masto_reply = HTTPInfo(HTTPRequest, #PB_HTTP_Response)
+      reply = HTTPInfo(HTTPRequest, #PB_HTTP_Response)
       result      = HTTPInfo(HTTPRequest, #PB_HTTP_StatusCode)
       
       FinishHTTP(HTTPRequest)
@@ -173,15 +173,15 @@ Module MastoToot
     
     Global HttpRequest = HTTPRequestMemory(#PB_HTTP_Post, masto_media_api, *Buffer, MemorySize(*Buffer), 0, Header())
     If HttpRequest
-      masto_status = HTTPInfo(HTTPRequest, #PB_HTTP_StatusCode)
+      status = HTTPInfo(HTTPRequest, #PB_HTTP_StatusCode)
       
-      If masto_status <> "200"
+      If status <> "200"
         FinishHTTP(HTTPRequest)
         ProcedureReturn ""
       EndIf
       
-      masto_reply            = HTTPInfo(HTTPRequest, #PB_HTTP_Response)
-      Define masto_mediaid.s = GetPartFromString(masto_reply, "id")
+      reply            = HTTPInfo(HTTPRequest, #PB_HTTP_Response)
+      Define masto_mediaid.s = GetPartFromString(reply, "id")
       
       FinishHTTP(HttpRequest)
     EndIf
@@ -205,14 +205,14 @@ Module MastoToot
     HttpRequest = HTTPRequest(#PB_HTTP_Post, masto_toot_api, message, 0, Header())
     
     If HttpRequest
-      masto_status = HTTPInfo(HTTPRequest, #PB_HTTP_StatusCode)
-      If masto_status <> "200"
+      status = HTTPInfo(HTTPRequest, #PB_HTTP_StatusCode)
+      If status <> "200"
         FinishHTTP(HTTPRequest)
         ProcedureReturn "0"
       EndIf
       
-      masto_reply        = HTTPInfo(HTTPRequest, #PB_HTTP_Response)
-      Define masto_url.s = GetPartFromString(masto_reply, "url")
+      reply        = HTTPInfo(HTTPRequest, #PB_HTTP_Response)
+      Define masto_url.s = GetPartFromString(reply, "url")
       
       FinishHTTP(HTTPRequest)
     EndIf
@@ -247,7 +247,7 @@ Module MastoToot
   ; this on may be helpful to check, if users have correctly entered access-token and server
   Procedure   VerifyAccessToken() ; if you do, call this in step 3 to verify access and the token from step 2
     CallServerPost_Verify(masto_verify_credentials_api, " ", access_token)    
-    If GetPartFromString(masto_reply, "name") = masto_appname ; the app-name will be returned
+    If GetPartFromString(reply, "name") = masto_appname ; the app-name will be returned
       ProcedureReturn #True
     Else
       ProcedureReturn #False
@@ -259,6 +259,7 @@ EndModule
 CompilerIf #PB_Compiler_IsMainFile
   UsePNGImageEncoder()
   
+  End
   #masto_server      = "my-mastodon-server"
   #masto_appname     = "my-app"
   #masto_app_url     = "page-of-my-app"
@@ -279,7 +280,8 @@ CompilerIf #PB_Compiler_IsMainFile
   EndIf
 CompilerEndIf
 ; IDE Options = PureBasic 6.01 LTS - C Backend (MacOS X - arm64)
-; CursorPosition = 264
+; CursorPosition = 249
+; FirstLine = 234
 ; Folding = ---
 ; EnableXP
 ; DPIAware
