@@ -8,3 +8,4 @@ See the source code for instructions. Short journey:
 - put the access-token in the code and add everything else (see bottom of file for info)
 - toot
 
+We moved to codeberg: https://codeberg.org/foodsnacker/pb-toot
